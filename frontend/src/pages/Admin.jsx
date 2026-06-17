@@ -43,6 +43,10 @@ function AdminPage() {
           className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'storage' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
           📦 Storage
         </button>
+        <button onClick={() => setTab('modules')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'modules' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          🧩 Modules
+        </button>
       </div>
 
       {tab === 'users' && (
@@ -89,6 +93,70 @@ function AdminPage() {
       )}
 
       {tab === 'storage' && <StorageBrowser />}
+      {tab === 'modules' && <ModulesManager />}
+    </div>
+  )
+}
+
+function ModulesManager() {
+  const [modules, setModules] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [toggling, setToggling] = useState(null)
+
+  const fetchModules = async () => {
+    setLoading(true)
+    try {
+      const res = await api('/api/admin/modules')
+      if (res.success) setModules(res.data)
+      else toast.error(res.error)
+    } catch { toast.error('Failed to load modules') }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetchModules() }, [])
+
+  const toggle = async (modId) => {
+    setToggling(modId)
+    try {
+      const res = await api(`/api/admin/modules/${modId}/toggle`, { method: 'POST' })
+      if (res.success) {
+        setModules(m => m.map(x => x.id === modId ? { ...x, enabled: res.data.enabled } : x))
+        toast.success(res.data.message)
+      } else toast.error(res.error)
+    } catch { toast.error('Toggle failed') }
+    finally { setToggling(null) }
+  }
+
+  return (
+    <div>
+      <p className="text-sm text-gray-500 mb-4">Enable or disable modules. Changes take effect after server restart.</p>
+      {loading ? (
+        <p className="text-gray-400 text-center py-8">Loading...</p>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase">
+            <div className="col-span-6">Module</div>
+            <div className="col-span-3">Status</div>
+            <div className="col-span-3"></div>
+          </div>
+          {modules.map(m => (
+            <div key={m.id} className="grid grid-cols-12 gap-2 items-center px-4 py-3 hover:bg-gray-50 border-b last:border-b-0">
+              <div className="col-span-6 text-sm font-medium">{m.name}</div>
+              <div className="col-span-3">
+                <span className={`text-xs px-2 py-0.5 rounded-full ${m.enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {m.enabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+              <div className="col-span-3 text-right">
+                <button onClick={() => toggle(m.id)} disabled={toggling === m.id}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium ${m.enabled ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'} disabled:opacity-50`}>
+                  {toggling === m.id ? '...' : m.enabled ? 'Disable' : 'Enable'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

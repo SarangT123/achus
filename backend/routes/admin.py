@@ -3,11 +3,12 @@ from sqlalchemy import select, delete
 from pathlib import Path
 import shutil
 
-from core.database import get_session, User
+from core.database import get_session, User, Module
 from core.auth import hash_password
 from core.deps import require_admin
 from core.schemas import ApiResponse
 from core.config import settings
+from core.module_loader import discover_modules
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
@@ -105,6 +106,46 @@ async def list_user_storage(
             "modified": item.stat().st_mtime,
         })
     return ApiResponse(data={"path": path, "entries": entries, "username": username})
+
+
+@router.get("/modules", response_model=ApiResponse)
+async def list_modules(
+    session=Depends(get_session),
+    admin=Depends(require_admin),
+):
+    discovered = discover_modules()
+    result = await session.execute(select(Module).order_by(Module.id))
+    db_modules = {m.id: m for m in result.scalars().all()}
+
+    modules_list = []
+    for name in discovered:
+        m = db_modules.get(name)
+        modules_list.append({
+            "id": name,
+            "name": m.name if m else name.replace("_", " ").title(),
+            "enabled": bool(m.enabled) if m else True,
+        })
+    return ApiResponse(data=modules_list)
+
+
+@router.post("/modules/{module_id}/toggle", response_model=ApiResponse)
+async def toggle_module(
+    module_id: str,
+    session=Depends(get_session),
+    admin=Depends(require_admin),
+):
+    result = await session.execute(select(Module).where(Module.id == module_id))
+    m = result.scalar_one_or_none()
+    if not m:
+        return ApiResponse(success=False, error=f"Module '{module_id}' not found")
+
+    m.enabled = not m.enabled
+    await session.commit()
+    return ApiResponse(data={
+        "id": m.id,
+        "enabled": bool(m.enabled),
+        "message": f"Module '{m.id}' {'enabled' if m.enabled else 'disabled'}. Restart server to apply.",
+    })
 
 
 @router.delete("/storage/{username}", response_model=ApiResponse)

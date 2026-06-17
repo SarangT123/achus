@@ -1,9 +1,11 @@
 import importlib
 import inspect
-import pkgutil
 from pathlib import Path
 
 from fastapi import FastAPI
+from sqlalchemy import select
+
+from .database import Module, get_session
 
 MODULES_DIR = Path(__file__).resolve().parent.parent / "modules"
 
@@ -47,12 +49,30 @@ async def load_all_modules(app: FastAPI):
     loaded = []
     setup_tasks = []
 
-    for name in module_names:
-        metadata, setup_fn = load_module(app, name)
-        if metadata:
-            loaded.append(metadata)
-            if setup_fn:
-                setup_tasks.append(setup_fn())
+    async for session in get_session():
+        for name in module_names:
+            result = await session.execute(select(Module).where(Module.id == name))
+            db_module = result.scalar_one_or_none()
+
+            if db_module is None:
+                db_module = Module(id=name, name=name.replace("_", " ").title(), enabled=1)
+                session.add(db_module)
+                await session.commit()
+
+            if not db_module.enabled:
+                print(f"[module_loader] Skipping disabled module '{name}'")
+                continue
+
+            metadata, setup_fn = load_module(app, name)
+            if metadata:
+                loaded.append(metadata)
+                if setup_fn:
+                    setup_tasks.append(setup_fn())
+                if metadata.get("name") and db_module.name != metadata["name"]:
+                    db_module.name = metadata["name"]
+                    await session.commit()
+
+        break
 
     if setup_tasks:
         import asyncio

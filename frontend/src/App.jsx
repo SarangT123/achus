@@ -68,14 +68,17 @@ function AppContent() {
     return <LoginPage />
   }
 
+  const serverIds = new Set(serverModules.map(m => m.id))
+  const enabledEntries = moduleEntries.filter(m => serverIds.has(m.id))
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen flex flex-col">
         <StatusBar printerOnline={printerOnline} healthOk={healthOk} />
-        <Layout modules={moduleEntries}>
+        <Layout modules={enabledEntries}>
           <Routes>
             <Route path="/" element={
-              <Dashboard modules={moduleEntries} serverModules={serverModules} />
+              <Dashboard modules={enabledEntries} serverModules={serverModules} />
             } />
             <Route path="/admin" element={
               <ErrorBoundary key="admin">
@@ -84,7 +87,7 @@ function AppContent() {
                 </div>
               </ErrorBoundary>
             } />
-            {moduleEntries.map(m => (
+            {enabledEntries.map(m => (
               <Route
                 key={m.id}
                 path={`/${m.id}`}
