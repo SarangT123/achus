@@ -17,23 +17,26 @@ THEMES = {
 }
 
 TEMPLATE_MAP = {
-    "event": "event.html",
-    "workshop": "workshop.html",
-    "notice": "notice.html",
-    "celebration": "celebration.html",
+    "minimal": "minimal.html",
+    "vibrant": "vibrant.html",
+    "classic": "classic.html",
+    "banner": "banner.html",
 }
 
 
 def generate_poster(title: str, subtitle: str, date: str, venue: str,
-                    template_id: str = "event", theme_id: str = "modern") -> Path:
+                    description: str = "", time: str = "",
+                    template_id: str = "minimal", theme_id: str = "modern") -> Path:
     theme = THEMES.get(theme_id, THEMES["modern"])
-    template_file = TEMPLATE_MAP.get(template_id, "event.html")
+    template_file = TEMPLATE_MAP.get(template_id, "minimal.html")
 
     template = env.get_template(template_file)
     html = template.render(
         title=title,
         subtitle=subtitle,
+        description=description,
         date=date,
+        time=time,
         venue=venue,
         primary_color=theme["primary_color"],
         bg_color=theme["bg_color"],
