@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+*.egg-info/
+dist/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Runtime data
+data/
+.env
+*.db
+*.sqlite
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Binary
+gh
