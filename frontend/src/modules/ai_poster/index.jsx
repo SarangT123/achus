@@ -1,25 +1,36 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+
+function downloadBlob(res, filename) {
+  const blob = new Blob([res])
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
 
 function AiPosterModule() {
   const [description, setDescription] = useState('')
   const [generating, setGenerating] = useState(false)
-  const [result, setResult] = useState(null)
+  const [ollamaOk, setOllamaOk] = useState(null)
 
   const handleGenerate = async () => {
     if (!description.trim()) { toast.error('Please describe your event'); return }
-
     setGenerating(true)
-    setResult(null)
+
     const params = new URLSearchParams({ description })
 
     try {
       const res = await fetch('/api/ai-poster/generate', { method: 'POST', body: params })
-      const data = await res.json()
-      if (data.success) {
-        setResult(data.data)
-        toast.success('Poster created!')
+      const contentType = res.headers.get('content-type') || ''
+
+      if (contentType.includes('application/pdf')) {
+        const blob = await res.blob()
+        downloadBlob(blob, 'ai_poster.pdf')
+        toast.success('Poster generated and downloaded!')
       } else {
+        const data = await res.json()
         toast.error(data.error || 'Generation failed')
       }
     } catch {
@@ -28,6 +39,18 @@ function AiPosterModule() {
       setGenerating(false)
     }
   }
+
+  const checkOllama = async () => {
+    try {
+      const res = await fetch('/api/ai-poster/health')
+      const data = await res.json()
+      setOllamaOk(data.data?.ollama_running === true)
+    } catch {
+      setOllamaOk(false)
+    }
+  }
+
+  useEffect(() => { checkOllama() }, [])
 
   return (
     <div>
@@ -65,34 +88,29 @@ function AiPosterModule() {
           </button>
         </div>
 
-        {!result && !generating && (
+        {!generating && ollamaOk === false && (
           <div className="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <p className="text-amber-700 text-sm font-medium">⚡ Requires Ollama</p>
+            <p className="text-amber-700 text-sm font-medium">⚡ Ollama is not running</p>
             <p className="text-amber-600 text-xs mt-1">
-              This module needs Ollama running locally. If it fails, use the{' '}
-              <a href="/poster-maker" className="underline">Poster Maker</a> manually instead.
+              Start Ollama with <code className="bg-amber-100 px-1 rounded">ollama serve</code> on the server.
+              Meanwhile, use the{' '}
+              <Link to="/poster-maker" className="underline font-medium">Poster Maker</Link> manually.
             </p>
           </div>
         )}
 
-        {result && (
-          <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-5">
-            <h3 className="font-semibold text-green-700 mb-2">✅ Poster Generated!</h3>
-            <div className="space-y-1 text-sm text-green-600">
-              <p>Title: {result.title}</p>
-              <p>Subtitle: {result.subtitle}</p>
-              <p>Date: {result.date}</p>
-              <p>Venue: {result.venue}</p>
-              <p>Theme: {result.theme}</p>
-            </div>
-            {result.download_url && (
-              <a
-                href={result.download_url}
-                className="mt-3 inline-block px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700"
-              >
-                Download Poster
-              </a>
-            )}
+        {!generating && ollamaOk === true && (
+          <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-4">
+            <p className="text-green-700 text-sm font-medium">✅ Ollama is running</p>
+            <p className="text-green-600 text-xs mt-1">Describe your event above and click generate.</p>
+          </div>
+        )}
+
+        {generating && (
+          <div className="mt-6 bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-center">
+            <div className="text-3xl mb-2 animate-bounce">✨</div>
+            <p className="text-indigo-700 text-sm font-medium">Processing your description...</p>
+            <p className="text-indigo-500 text-xs mt-1">AI is extracting event details and designing your poster</p>
           </div>
         )}
       </div>

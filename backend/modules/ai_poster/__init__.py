@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Form
+from fastapi.responses import FileResponse
 from core.schemas import ApiResponse
-import json
+from modules.poster_maker import service as poster_service
+
+from . import service as ai_service
 
 router = APIRouter(prefix="/api/ai-poster", tags=["AI Poster"])
 
@@ -11,29 +14,40 @@ metadata = {
     "order": 5,
 }
 
-OLLAMA_EXTRACT_PROMPT = """Extract structured event information from the following description.
-Return ONLY valid JSON with these exact fields:
-- "title": string (event title)
-- "subtitle": string (optional subtitle, empty string if none)
-- "date": string (event date)
-- "venue": string (event location)
-- "theme": string (one of: "modern", "classic", "nature", "celebration")
 
-Description: {text}
-"""
-
-
-@router.post("/generate", response_model=ApiResponse)
+@router.post("/generate")
 async def generate_ai_poster(description: str = Form(...)):
-    return ApiResponse(success=False, error="Not implemented yet (Ollama integration)")
-    # Steps once implemented:
-    # 1. Call Ollama with OLLAMA_EXTRACT_PROMPT
-    # 2. Parse JSON response
-    # 3. Forward to poster_maker.generate_poster()
-    # 4. Return the generated poster
+    ollama_ok = await ai_service.check_ollama_health()
+    if not ollama_ok:
+        return ApiResponse(
+            success=False,
+            error="Ollama is not running. Start it with 'ollama serve' and pull a model.",
+        )
+
+    try:
+        extracted = await ai_service.extract_with_ollama(description)
+    except Exception as e:
+        return ApiResponse(success=False, error=f"AI extraction failed: {str(e)}")
+
+    if not extracted.get("title"):
+        return ApiResponse(success=False, error="Could not extract a title from the description. Please be more specific.")
+
+    try:
+        result = poster_service.generate_poster(
+            title=extracted["title"],
+            subtitle=extracted.get("subtitle", ""),
+            date=extracted.get("date", ""),
+            venue=extracted.get("venue", ""),
+            template_id=extracted.get("template", "event"),
+            theme_id=extracted.get("theme", "modern"),
+        )
+        return FileResponse(str(result), media_type="application/pdf",
+                            filename=f"ai_poster_{template}.pdf")
+    except Exception as e:
+        return ApiResponse(success=False, error=f"Poster generation failed: {str(e)}")
 
 
-@router.post("/refine", response_model=ApiResponse)
+@router.post("/refine")
 async def refine_poster(
     description: str = Form(""),
     title: str = Form(""),
@@ -41,8 +55,27 @@ async def refine_poster(
     date: str = Form(""),
     venue: str = Form(""),
     theme: str = Form("modern"),
+    template: str = Form("event"),
 ):
-    return ApiResponse(success=False, error="Not implemented yet")
+    try:
+        result = poster_service.generate_poster(
+            title=title,
+            subtitle=subtitle,
+            date=date,
+            venue=venue,
+            template_id=template,
+            theme_id=theme if theme in ("modern", "classic", "nature", "celebration") else "modern",
+        )
+        return FileResponse(str(result), media_type="application/pdf",
+                            filename=f"ai_poster_{template}.pdf")
+    except Exception as e:
+        return ApiResponse(success=False, error=str(e))
+
+
+@router.get("/health", response_model=ApiResponse)
+async def ai_health():
+    ok = await ai_service.check_ollama_health()
+    return ApiResponse(data={"ollama_running": ok, "model": "llama3.2"})
 
 
 async def setup():
