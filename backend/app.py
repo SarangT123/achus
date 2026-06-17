@@ -1,9 +1,14 @@
+import asyncio
+import hashlib
+import hmac
 import logging
+import subprocess
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
@@ -74,6 +79,36 @@ app.add_middleware(
 
 app.include_router(auth_routes.router)
 app.include_router(admin_routes.router)
+
+
+@app.post("/api/webhook/github")
+async def github_webhook(request: Request):
+    secret = settings.github_webhook_secret
+    if not secret:
+        return JSONResponse(status_code=503, content={"error": "webhook not configured"})
+
+    body = await request.body()
+    sig_header = request.headers.get("x-hub-signature-256", "")
+    expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig_header, expected):
+        return JSONResponse(status_code=401, content={"error": "invalid signature"})
+
+    event = request.headers.get("x-github-event", "")
+    if event != "push":
+        return JSONResponse(status_code=200, content={"status": "ignored", "event": event})
+
+    asyncio.create_task(_run_deploy())
+    return JSONResponse(status_code=202, content={"status": "deploying"})
+
+
+async def _run_deploy():
+    await asyncio.sleep(2)
+    proc = await asyncio.create_subprocess_exec(
+        "bash", str(BASE_DIR / "scripts" / "deploy.sh"),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    await proc.wait()
 
 
 @app.get("/api/modules", response_model=ApiResponse)

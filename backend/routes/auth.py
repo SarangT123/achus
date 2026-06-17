@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, Header, HTTPException
 from sqlalchemy import select
 from pydantic import BaseModel
 
@@ -34,7 +34,7 @@ async def register(
     storage_path = Path(settings.storage_path) / username
     storage_path.mkdir(parents=True, exist_ok=True)
 
-    token = generate_token(username)
+    token = await generate_token(username)
     return ApiResponse(data={
         "token": token,
         "user": {"id": user.id, "username": user.username, "role": user.role},
@@ -53,7 +53,7 @@ async def login(
     if not user or not verify_password(password, user.password_hash):
         return ApiResponse(success=False, error="Invalid username or password")
 
-    token = generate_token(username)
+    token = await generate_token(username)
     return ApiResponse(data={
         "token": token,
         "user": {"id": user.id, "username": user.username, "role": user.role},
@@ -71,6 +71,10 @@ async def me(current_user=Depends(get_current_user)):
 
 
 @router.post("/logout", response_model=ApiResponse)
-async def logout(current_user=Depends(get_current_user)):
-    remove_token(current_user.username)
+async def logout(
+    current_user=Depends(get_current_user),
+    authorization: str = Header(None),
+):
+    if authorization and authorization.startswith("Bearer "):
+        await remove_token(authorization[7:])
     return ApiResponse(data={"message": "Logged out"})

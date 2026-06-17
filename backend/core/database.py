@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Column, String, Integer, Text, DateTime, func
+from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey, func
 
 from .config import settings
 
@@ -41,6 +41,14 @@ class User(Base):
     username = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     role = Column(String, default="user")
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class UserSession(Base):
+    __tablename__ = "sessions"
+
+    token = Column(String, primary_key=True)
+    username = Column(String, ForeignKey("users.username"), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
 

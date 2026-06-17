@@ -17,6 +17,8 @@ class Settings(BaseSettings):
 
     max_upload_size: int = 50 * 1024 * 1024
 
+    github_webhook_secret: str = ""
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
