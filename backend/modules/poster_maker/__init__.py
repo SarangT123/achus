@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Form
-from fastapi.responses import Response
+from fastapi.responses import FileResponse
 from core.schemas import ApiResponse
+
+from . import service
 
 router = APIRouter(prefix="/api/poster-maker", tags=["Poster Maker"])
 
@@ -16,16 +18,16 @@ metadata = {
 async def list_templates():
     return ApiResponse(data={
         "templates": [
-            {"id": "event", "name": "Event", "thumbnail": None},
-            {"id": "workshop", "name": "Workshop", "thumbnail": None},
-            {"id": "notice", "name": "Notice", "thumbnail": None},
-            {"id": "celebration", "name": "Celebration", "thumbnail": None},
+            {"id": "event", "name": "Event"},
+            {"id": "workshop", "name": "Workshop"},
+            {"id": "notice", "name": "Notice"},
+            {"id": "celebration", "name": "Celebration"},
         ],
         "themes": [
-            {"id": "modern", "name": "Modern", "colors": ["#2563EB", "#DBEAFE"]},
+            {"id": "modern", "name": "Modern", "colors": ["#2563EB", "#EFF6FF"]},
             {"id": "classic", "name": "Classic", "colors": ["#1E293B", "#F8FAFC"]},
-            {"id": "nature", "name": "Nature", "colors": ["#059669", "#D1FAE5"]},
-            {"id": "celebration", "name": "Celebration", "colors": ["#D97706", "#FEF3C7"]},
+            {"id": "nature", "name": "Nature", "colors": ["#059669", "#ECFDF5"]},
+            {"id": "celebration", "name": "Celebration", "colors": ["#D97706", "#FFFBEB"]},
         ],
     })
 
@@ -39,7 +41,12 @@ async def generate_poster(
     template: str = Form("event"),
     theme: str = Form("modern"),
 ):
-    return ApiResponse(success=False, error="Not implemented yet")
+    try:
+        result = service.generate_poster(title, subtitle, date, venue, template, theme)
+        return FileResponse(str(result), media_type="application/pdf",
+                            filename=f"poster_{template}.pdf")
+    except Exception as e:
+        return ApiResponse(success=False, error=str(e))
 
 
 async def setup():
