@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@page {
+  size: {{ width }}pt {{ height }}pt;
+  margin: 0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: {{ width }}pt;
+  height: {{ height }}pt;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  background: {{ theme.bg }};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.certificate {
+  width: 92%;
+  height: 88%;
+  border: {{ theme.border }};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 60px;
+  position: relative;
+}
+
+.certificate::before {
+  content: '';
+  position: absolute;
+  top: 12px; left: 12px;
+  right: 12px; bottom: 12px;
+  border: 1px solid {{ theme.accent }}33;
+  pointer-events: none;
+}
+
+.ribbon {
+  font-size: 14px;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: {{ theme.accent }};
+  margin-bottom: 20px;
+  font-family: 'Arial', sans-serif;
+}
+
+.title {
+  font-size: 48px;
+  color: {{ theme.primary }};
+  font-weight: bold;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: {{ theme.primary }}aa;
+  margin-bottom: 30px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: 'Arial', sans-serif;
+}
+
+.this-is-to {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 6px;
+  font-family: 'Arial', sans-serif;
+}
+
+.student-name {
+  font-size: 42px;
+  color: {{ theme.accent }};
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-align: center;
+  font-family: 'Georgia', serif;
+  font-style: italic;
+}
+
+.for-text {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 6px;
+  font-family: 'Arial', sans-serif;
+}
+
+.course-name {
+  font-size: 24px;
+  color: {{ theme.primary }};
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.description {
+  font-size: 14px;
+  color: #555;
+  text-align: center;
+  max-width: 80%;
+  line-height: 1.5;
+  margin-bottom: 30px;
+  font-family: 'Arial', sans-serif;
+}
+
+.bottom-row {
+  display: flex;
+  justify-content: space-between;
+  width: 80%;
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.date-line, .signature-line {
+  text-align: center;
+}
+
+.label {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'Arial', sans-serif;
+}
+
+.date-text {
+  font-size: 14px;
+  color: {{ theme.primary }};
+  margin-top: 4px;
+  font-family: 'Arial', sans-serif;
+}
+
+.signature-line {
+  min-width: 180px;
+}
+
+.signature-line::after {
+  content: '';
+  display: block;
+  width: 180px;
+  height: 1px;
+  background: {{ theme.accent }};
+  margin: 8px auto 4px;
+}
+
+.signature-name {
+  font-size: 14px;
+  color: {{ theme.primary }};
+  font-family: 'Georgia', serif;
+  font-style: italic;
+}
+</style>
+</head>
+<body>
+<div class="certificate">
+  <div class="ribbon">★ of Achievement ★</div>
+  <div class="title">Certificate</div>
+  <div class="subtitle">of Completion</div>
+  <div class="this-is-to">This is to certify that</div>
+  <div class="student-name">{{ student_name }}</div>
+  <div class="for-text">has successfully completed</div>
+  <div class="course-name">{{ course_name }}</div>
+  {% if description %}
+  <div class="description">{{ description }}</div>
+  {% endif %}
+  <div class="bottom-row">
+    <div class="date-line">
+      <div class="label">Date</div>
+      <div class="date-text">{{ date }}</div>
+    </div>
+    {% if signature_name %}
+    <div class="signature-line">
+      <div class="label">Signed</div>
+      <div class="signature-name">{{ signature_name }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>
