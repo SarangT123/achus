@@ -73,27 +73,14 @@ function AdminPage() {
             <p className="text-gray-400 text-center py-8">Loading...</p>
           ) : (
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase">
-                <div className="col-span-4">Username</div>
-                <div className="col-span-3">Role</div>
-                <div className="col-span-3">Created</div>
-                <div className="col-span-2"></div>
+              <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase">
+                <div className="col-span-3">Username</div>
+                <div className="col-span-2">Role</div>
+                <div className="col-span-2">Created</div>
+                <div className="col-span-5"></div>
               </div>
               {users.map(u => (
-                <div key={u.id} className="grid grid-cols-12 gap-2 items-center px-4 py-3 hover:bg-gray-50 border-b last:border-b-0">
-                  <div className="col-span-4 text-sm font-medium">{u.username}</div>
-                  <div className="col-span-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {u.role}
-                    </span>
-                  </div>
-                  <div className="col-span-3 text-sm text-gray-400">{new Date(u.created_at).toLocaleDateString()}</div>
-                  <div className="col-span-2 text-right">
-                    <button onClick={() => handleDelete(u)} className="text-xs text-red-500 hover:text-red-700" title="Delete user">
-                      Delete
-                    </button>
-                  </div>
-                </div>
+                <UserRow key={u.id} user={u} onUpdate={fetchUsers} />
               ))}
             </div>
           )}
@@ -265,6 +252,94 @@ function ModulesManager() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function UserRow({ user, onUpdate }) {
+  const [editing, setEditing] = useState(false)
+  const [username, setUsername] = useState(user.username)
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState(user.role)
+  const [busy, setBusy] = useState(false)
+
+  const save = async () => {
+    setBusy(true)
+    const params = new URLSearchParams()
+    if (username !== user.username) params.append('username', username)
+    if (password) params.append('password', password)
+    if (role !== user.role) params.append('role', role)
+    if (![...params.keys()].length) { setEditing(false); setBusy(false); return }
+    try {
+      const res = await api(`/api/admin/users/${user.id}`, { method: 'PATCH', body: params })
+      if (res.success) { toast.success('User updated'); setEditing(false); onUpdate() }
+      else toast.error(res.error)
+    } catch { toast.error('Update failed') }
+    finally { setBusy(false) }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm(`Delete user "${user.username}" and all their files?`)) return
+    try {
+      const res = await api(`/api/admin/users/${user.id}`, { method: 'DELETE' })
+      if (res.success) { toast.success(res.data.message); onUpdate() }
+      else toast.error(res.error)
+    } catch { toast.error('Delete failed') }
+  }
+
+  if (editing) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end px-4 py-3 bg-blue-50 border-b border-blue-200">
+        <div className="md:col-span-3">
+          <label className="block text-xs text-gray-500">Username</label>
+          <input value={username} onChange={e => setUsername(e.target.value)}
+            className="rounded-lg border-gray-300 text-sm w-full mt-0.5" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-xs text-gray-500">Password</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            className="rounded-lg border-gray-300 text-sm w-full mt-0.5" placeholder="Leave blank to keep" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-xs text-gray-500">Role</label>
+          <select value={role} onChange={e => setRole(e.target.value)}
+            className="rounded-lg border-gray-300 text-sm w-full mt-0.5">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div className="md:col-span-5 flex gap-2 justify-end">
+          <button onClick={save} disabled={busy}
+            className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-xs">Save</button>
+          <button onClick={() => setEditing(false)}
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-600">Cancel</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center px-4 py-3 hover:bg-gray-50 border-b last:border-b-0">
+      <div className="md:col-span-3 text-sm font-medium">{user.username}</div>
+      <div className="md:col-span-2">
+        <span className={`text-xs px-2 py-0.5 rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+          {user.role}
+        </span>
+      </div>
+      <div className="md:col-span-2 text-sm text-gray-400">{new Date(user.created_at).toLocaleDateString()}</div>
+      <div className="md:col-span-5 flex gap-2 justify-end flex-wrap">
+        <button onClick={() => { setEditing(true); setUsername(user.username); setPassword(''); setRole(user.role) }}
+          className="text-xs text-primary-600 hover:text-primary-800 font-medium">
+          Edit
+        </button>
+        <button onClick={handleDelete} className="text-xs text-red-500 hover:text-red-700">
+          Delete
+        </button>
+      </div>
+      {/* Mobile meta */}
+      <div className="md:hidden col-span-12 text-xs text-gray-400 -mt-1">
+        Role: {user.role} · Created: {new Date(user.created_at).toLocaleDateString()}
+      </div>
     </div>
   )
 }

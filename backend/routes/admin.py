@@ -59,6 +59,52 @@ async def create_user(
     return ApiResponse(data={"id": user.id, "username": user.username, "role": user.role})
 
 
+@router.patch("/users/{user_id}", response_model=ApiResponse)
+async def update_user(
+    user_id: int,
+    username: str = Form(""),
+    password: str = Form(""),
+    role: str = Form(""),
+    session=Depends(get_session),
+    admin=Depends(require_admin),
+):
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return ApiResponse(success=False, error="User not found")
+
+    if role and role not in ("user", "admin"):
+        return ApiResponse(success=False, error="Role must be 'user' or 'admin'")
+
+    if role and role != user.role:
+        if user.role == "admin" and role == "user":
+            admin_count = await session.execute(select(User).where(User.role == "admin"))
+            if len(admin_count.scalars().all()) <= 1:
+                return ApiResponse(success=False, error="Cannot demote the last admin")
+        user.role = role
+
+    if username and username != user.username:
+        existing = await session.execute(select(User).where(User.username == username))
+        if existing.scalar_one_or_none():
+            return ApiResponse(success=False, error="Username already taken")
+        old_dir = Path(settings.storage_path) / user.username
+        new_dir = Path(settings.storage_path) / username
+        user.username = username
+        if old_dir.exists():
+            old_dir.rename(new_dir)
+
+    if password:
+        user.password_hash = hash_password(password)
+
+    await session.commit()
+    return ApiResponse(data={
+        "id": user.id,
+        "username": user.username,
+        "role": user.role,
+        "message": "User updated",
+    })
+
+
 @router.delete("/users/{user_id}", response_model=ApiResponse)
 async def delete_user(
     user_id: int,
