@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends, Form, Query
 from sqlalchemy import select, delete
 from pathlib import Path
 import shutil
+import os
+import time
+
+import psutil
 
 from core.database import get_session, User, Module
 from core.auth import hash_password
@@ -145,6 +149,54 @@ async def toggle_module(
         "id": m.id,
         "enabled": bool(m.enabled),
         "message": f"Module '{m.id}' {'enabled' if m.enabled else 'disabled'}. Restart server to apply.",
+    })
+
+
+LOGFILE = Path(settings.storage_path).parent / "achus.log"
+
+
+@router.get("/system", response_model=ApiResponse)
+async def system_info(admin=Depends(require_admin)):
+    cpu = psutil.cpu_percent(interval=0.5)
+    mem = psutil.virtual_memory()
+    disk = psutil.disk_usage("/")
+    boot = int(time.time() - psutil.boot_time())
+    d, rem = divmod(boot, 86400); h, rem = divmod(rem, 3600); m, _ = divmod(rem, 60)
+
+    return ApiResponse(data={
+        "cpu": {"usage_percent": cpu, "cores": os.cpu_count()},
+        "memory": {
+            "total_gb": round(mem.total / 1e9, 1),
+            "used_gb": round(mem.used / 1e9, 1),
+            "percent": mem.percent,
+        },
+        "disk": {
+            "total_gb": round(disk.total / 1e9, 1),
+            "used_gb": round(disk.used / 1e9, 1),
+            "percent": disk.percent,
+        },
+        "uptime": f"{d}d {h}h {m}m",
+        "python": os.sys.version,
+    })
+
+
+@router.get("/logs", response_model=ApiResponse)
+async def get_logs(
+    lines: int = Query(100, le=500),
+    admin=Depends(require_admin),
+):
+    log_path = LOGFILE.resolve()
+    if not log_path.exists():
+        return ApiResponse(data={"lines": [], "path": str(log_path)})
+
+    with open(log_path, "r") as f:
+        all_lines = f.readlines()
+    tail = all_lines[-lines:]
+    return ApiResponse(data={
+        "lines": tail,
+        "total": len(all_lines),
+        "showing": len(tail),
+        "path": str(log_path),
     })
 
 

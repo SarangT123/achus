@@ -1,4 +1,6 @@
+import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,8 +17,23 @@ from routes import auth as auth_routes
 from routes import admin as admin_routes
 
 
+def _setup_logging():
+    log_dir = BASE_DIR / "data"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / "achus.log"
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
+        handlers=[
+            logging.FileHandler(str(log_file)),
+            logging.StreamHandler(),
+        ],
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _setup_logging()
     await init_db()
     await _seed_admin()
     modules = await load_all_modules(app)

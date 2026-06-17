@@ -47,6 +47,14 @@ function AdminPage() {
           className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'modules' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
           🧩 Modules
         </button>
+        <button onClick={() => setTab('system')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'system' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          📊 System
+        </button>
+        <button onClick={() => setTab('logs')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'logs' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          📋 Logs
+        </button>
       </div>
 
       {tab === 'users' && (
@@ -94,6 +102,106 @@ function AdminPage() {
 
       {tab === 'storage' && <StorageBrowser />}
       {tab === 'modules' && <ModulesManager />}
+      {tab === 'system' && <SystemMonitor />}
+      {tab === 'logs' && <LogViewer />}
+    </div>
+  )
+}
+
+function SystemMonitor() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchData = async () => {
+    try {
+      const res = await api('/api/admin/system')
+      if (res.success) setData(res.data)
+    } catch { }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetchData(); const i = setInterval(fetchData, 5000); return () => clearInterval(i) }, [])
+
+  if (loading) return <p className="text-gray-400 text-center py-8">Loading...</p>
+  if (!data) return <p className="text-red-400 text-center py-8">Failed to load system info</p>
+
+  const Bar = ({ pct }) => (
+    <div className="w-full bg-gray-200 rounded-full h-2.5">
+      <div className="bg-primary-600 h-2.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+    </div>
+  )
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-2">
+        <h3 className="text-sm font-semibold text-gray-700">🧠 CPU</h3>
+        <p className="text-2xl font-bold text-gray-800">{data.cpu.usage_percent}%</p>
+        <Bar pct={data.cpu.usage_percent} />
+        <p className="text-xs text-gray-400">{data.cpu.cores} cores</p>
+      </div>
+      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-2">
+        <h3 className="text-sm font-semibold text-gray-700">💾 Memory</h3>
+        <p className="text-2xl font-bold text-gray-800">{data.memory.percent}%</p>
+        <Bar pct={data.memory.percent} />
+        <p className="text-xs text-gray-400">{data.memory.used_gb} GB / {data.memory.total_gb} GB</p>
+      </div>
+      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-2">
+        <h3 className="text-sm font-semibold text-gray-700">💿 Disk</h3>
+        <p className="text-2xl font-bold text-gray-800">{data.disk.percent}%</p>
+        <Bar pct={data.disk.percent} />
+        <p className="text-xs text-gray-400">{data.disk.used_gb} GB / {data.disk.total_gb} GB</p>
+      </div>
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-gray-700">⏱ Uptime</h3>
+        <p className="text-2xl font-bold text-gray-800 mt-2">{data.uptime}</p>
+      </div>
+      <div className="bg-white border border-gray-200 rounded-xl p-5 sm:col-span-2">
+        <h3 className="text-sm font-semibold text-gray-700">🐍 Python</h3>
+        <p className="text-xs text-gray-500 mt-2 font-mono break-all">{data.python}</p>
+      </div>
+    </div>
+  )
+}
+
+function LogViewer() {
+  const [logs, setLogs] = useState([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [lines, setLines] = useState(100)
+  const [path, setPath] = useState('')
+
+  const fetchLogs = async (n) => {
+    setLoading(true)
+    try {
+      const res = await api(`/api/admin/logs?lines=${n}`)
+      if (res.success) { setLogs(res.data.lines); setTotal(res.data.total); setPath(res.data.path) }
+    } catch { }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetchLogs(lines) }, [lines])
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-gray-400">{total} total lines · {path}</p>
+        <select value={lines} onChange={e => setLines(Number(e.target.value))}
+          className="rounded-lg border-gray-300 text-sm w-24">
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+          <option value={200}>200</option>
+          <option value={500}>500</option>
+        </select>
+      </div>
+      {loading ? (
+        <p className="text-gray-400 text-center py-8">Loading...</p>
+      ) : logs.length === 0 ? (
+        <p className="text-gray-400 text-center py-8">No logs yet</p>
+      ) : (
+        <pre className="bg-gray-900 text-green-300 text-xs p-4 rounded-xl overflow-x-auto max-h-[600px] overflow-y-auto font-mono leading-relaxed">
+          {logs.join('')}
+        </pre>
+      )}
     </div>
   )
 }
