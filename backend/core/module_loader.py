@@ -34,7 +34,7 @@ def load_module(app: FastAPI, module_name: str):
             app.include_router(mod.router)
 
         metadata = getattr(mod, "metadata", {})
-        metadata["id"] = module_name
+        metadata["id"] = module_name.replace("_", "-")
 
         if hasattr(mod, "setup") and inspect.iscoroutinefunction(mod.setup):
             return metadata, mod.setup

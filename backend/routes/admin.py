@@ -171,7 +171,7 @@ async def list_modules(
     for name in discovered:
         m = db_modules.get(name)
         modules_list.append({
-            "id": name,
+            "id": name.replace("_", "-"),
             "name": m.name if m else name.replace("_", " ").title(),
             "enabled": bool(m.enabled) if m else True,
         })
@@ -184,17 +184,19 @@ async def toggle_module(
     session=Depends(get_session),
     admin=Depends(require_admin),
 ):
-    result = await session.execute(select(Module).where(Module.id == module_id))
+    db_id = module_id.replace("-", "_")
+    result = await session.execute(select(Module).where(Module.id == db_id))
     m = result.scalar_one_or_none()
     if not m:
         return ApiResponse(success=False, error=f"Module '{module_id}' not found")
 
     m.enabled = not m.enabled
     await session.commit()
+    display_id = m.id.replace("_", "-")
     return ApiResponse(data={
-        "id": m.id,
+        "id": display_id,
         "enabled": bool(m.enabled),
-        "message": f"Module '{m.id}' {'enabled' if m.enabled else 'disabled'}. Restart server to apply.",
+        "message": f"Module '{display_id}' {'enabled' if m.enabled else 'disabled'}. Restart server to apply.",
     })
 
 
