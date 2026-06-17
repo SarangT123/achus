@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +8,7 @@ from core.config import settings, BASE_DIR
 from core.database import init_db
 from core.module_loader import load_all_modules, unload_all_modules
 from core.printer_watcher import printer_watcher
-from core.schemas import ApiResponse, ModuleMetadata
+from core.schemas import ApiResponse
 
 
 @asynccontextmanager
@@ -17,6 +16,9 @@ async def lifespan(app: FastAPI):
     await init_db()
     modules = await load_all_modules(app)
     app.state.modules = modules
+    static_dir = BASE_DIR / "frontend" / "dist"
+    if static_dir.exists():
+        app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
     await printer_watcher.start()
     yield
     await printer_watcher.stop()
@@ -49,6 +51,4 @@ async def health():
     })
 
 
-static_dir = BASE_DIR / "frontend" / "dist"
-if static_dir.exists():
-    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+
