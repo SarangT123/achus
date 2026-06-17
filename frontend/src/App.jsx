@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/Layout'
 import Dashboard from './components/Dashboard'
 import StatusBar from './components/StatusBar'
 import ErrorBoundary from './components/ErrorBoundary'
+import LoginPage from './pages/Login'
+import AdminPage from './pages/Admin'
 
 const modules = import.meta.glob('./modules/*/index.jsx', { eager: true })
 
@@ -14,12 +17,15 @@ const moduleEntries = Object.entries(modules)
   }))
   .sort((a, b) => (a.order || 99) - (b.order || 99))
 
-export default function App() {
+function AppContent() {
+  const { user, loading } = useAuth()
   const [serverModules, setServerModules] = useState([])
   const [printerOnline, setPrinterOnline] = useState(false)
   const [healthOk, setHealthOk] = useState(true)
 
   useEffect(() => {
+    if (!user) return
+
     fetch('/api/modules')
       .then(r => r.json())
       .then(res => { if (res.success) setServerModules(res.data) })
@@ -48,7 +54,19 @@ export default function App() {
     }, 15000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [user])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-400">Loading...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <LoginPage />
+  }
 
   return (
     <ErrorBoundary>
@@ -58,6 +76,13 @@ export default function App() {
           <Routes>
             <Route path="/" element={
               <Dashboard modules={moduleEntries} serverModules={serverModules} />
+            } />
+            <Route path="/admin" element={
+              <ErrorBoundary key="admin">
+                <div className="p-4 md:p-8 max-w-5xl mx-auto">
+                  <AdminPage />
+                </div>
+              </ErrorBoundary>
             } />
             {moduleEntries.map(m => (
               <Route
@@ -76,5 +101,13 @@ export default function App() {
         </Layout>
       </div>
     </ErrorBoundary>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }

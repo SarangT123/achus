@@ -372,7 +372,7 @@ const toolComponents = {
   encrypt: EncryptTool,
 }
 
-export default function PdfToolsModule() {
+function PdfToolsModule() {
   const [selectedTool, setSelectedTool] = useState(null)
 
   if (selectedTool) {
@@ -396,4 +396,12 @@ export default function PdfToolsModule() {
       </div>
     </div>
   )
+}
+
+export default {
+  id: 'pdf-tools',
+  name: 'PDF Tools',
+  icon: 'file-pdf',
+  component: PdfToolsModule,
+  order: 1,
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
+import { api } from '../../utils/api'
 
 function formatDate(ts) {
   if (!ts) return ''
@@ -25,7 +26,7 @@ function CloudStorageModule() {
   const fetchEntries = useCallback(async (path) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/storage/list?path=${encodeURIComponent(path)}`)
+      const res = await api(`/api/storage/list?path=${encodeURIComponent(path)}`)
       const data = await res.json()
       if (data.success) setEntries(data.data.entries)
       else toast.error(data.error)
@@ -42,7 +43,7 @@ function CloudStorageModule() {
     form.append('path', currentPath)
     Array.from(files).forEach(f => form.append('files', f))
     try {
-      const res = await fetch('/api/storage/upload', { method: 'POST', body: form })
+      const res = await api('/api/storage/upload', { method: 'POST', body: form })
       const data = await res.json()
       if (data.success) {
         toast.success(`Uploaded ${data.data.uploaded.length} file(s)`)
@@ -67,7 +68,7 @@ function CloudStorageModule() {
     if (!newFolderName.trim()) return
     try {
       const params = new URLSearchParams({ path: `${currentPath}/${newFolderName}`.replace(/\/+/g, '/') })
-      const res = await fetch('/api/storage/mkdir', { method: 'POST', body: params })
+      const res = await api('/api/storage/mkdir', { method: 'POST', body: params })
       const data = await res.json()
       if (data.success) { toast.success('Folder created'); setNewFolderName(''); setShowNewFolder(false); fetchEntries(currentPath) }
       else toast.error(data.error)
@@ -79,11 +80,29 @@ function CloudStorageModule() {
     if (!confirm(`Delete ${isDir ? 'folder' : 'file'} "${name}"?`)) return
     const params = new URLSearchParams({ path })
     try {
-      const res = await fetch('/api/storage/delete', { method: 'DELETE', body: params })
+      const res = await api('/api/storage/delete', { method: 'DELETE', body: params })
       const data = await res.json()
       if (data.success) { toast.success('Deleted'); fetchEntries(currentPath) }
       else toast.error(data.error)
     } catch { toast.error('Delete failed') }
+  }
+
+  const downloadFile = async (name) => {
+    const filePath = `${currentPath}/${name}`.replace(/\/+/g, '/')
+    try {
+      const res = await api(`/api/storage/download/${filePath}`)
+      const ct = res.headers.get('content-type') || ''
+      if (ct.includes('json')) {
+        const data = await res.json()
+        toast.error(data.error || 'Download failed')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = name; a.click()
+      URL.revokeObjectURL(url)
+    } catch { toast.error('Download failed') }
   }
 
   const breadcrumbs = currentPath.split('/').filter(Boolean)
@@ -173,10 +192,10 @@ function CloudStorageModule() {
                     {entry.name}
                   </button>
                 ) : (
-                  <a href={`/api/storage/download/${currentPath}/${entry.name}`.replace(/\/+/g, '/')}
-                    className="text-sm font-medium text-gray-700 hover:text-primary-600 truncate">
+                  <button onClick={() => downloadFile(entry.name)}
+                    className="text-sm font-medium text-gray-700 hover:text-primary-600 truncate text-left">
                     {entry.name}
-                  </a>
+                  </button>
                 )}
               </div>
               {/* Size (desktop only) */}
