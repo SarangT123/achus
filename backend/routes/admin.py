@@ -9,7 +9,7 @@ import time
 import psutil
 
 from core.database import get_session, async_session, User, Module
-from core.auth import hash_password
+from core.auth import hash_password, validate_token
 from core.deps import require_admin
 from core.schemas import ApiResponse
 from core.config import settings, BASE_DIR
@@ -259,7 +259,6 @@ async def shell_ws(websocket: WebSocket):
         await websocket.close(code=4001)
         return
 
-    from core.auth import validate_token
     username = validate_token(token)
     if not username:
         await websocket.close(code=4001)
