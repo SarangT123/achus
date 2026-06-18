@@ -268,7 +268,7 @@ async def shell_ws(websocket: WebSocket):
         await websocket.close(code=4001)
         return
 
-    username = validate_token(token)
+    username = await validate_token(token)
     if not username:
         await websocket.close(code=4001)
         return
