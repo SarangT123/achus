@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Form, Query
+import asyncio
+from fastapi import APIRouter, Depends, Form, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy import select, delete
 from pathlib import Path
 import shutil
@@ -7,11 +8,11 @@ import time
 
 import psutil
 
-from core.database import get_session, User, Module
+from core.database import get_session, async_session, User, Module
 from core.auth import hash_password
 from core.deps import require_admin
 from core.schemas import ApiResponse
-from core.config import settings
+from core.config import settings, BASE_DIR
 from core.module_loader import discover_modules
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
@@ -246,6 +247,73 @@ async def get_logs(
         "showing": len(tail),
         "path": str(log_path),
     })
+
+
+@router.websocket("/shell")
+async def shell_ws(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        token_data = await asyncio.wait_for(websocket.receive_json(), timeout=10)
+        token = token_data.get("token", "")
+    except:
+        await websocket.close(code=4001)
+        return
+
+    from core.auth import validate_token
+    username = validate_token(token)
+    if not username:
+        await websocket.close(code=4001)
+        return
+
+    async with async_session() as session:
+        result = await session.execute(select(User).where(User.username == username, User.role == "admin"))
+        admin = result.scalar_one_or_none()
+    if not admin:
+        await websocket.close(code=4001)
+        return
+
+    cwd = str(BASE_DIR)
+    await websocket.send_json({"type": "info", "data": f"Shell ready.  CWD: {cwd}\nType 'exit' to close."})
+
+    try:
+        while True:
+            msg = await websocket.receive_json()
+            cmd = msg.get("cmd", "").strip()
+            if not cmd:
+                continue
+            if cmd.lower() == "exit":
+                break
+            if cmd.lower().startswith("cd "):
+                new_dir = cmd[3:].strip()
+                new_path = (Path(cwd) / new_dir).resolve()
+                if new_path.is_dir():
+                    cwd = str(new_path)
+                    await websocket.send_json({"type": "stdout", "data": ""})
+                else:
+                    await websocket.send_json({"type": "stderr", "data": f"cd: {new_dir}: Not a directory\n"})
+                continue
+
+            proc = await asyncio.create_subprocess_shell(
+                cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=cwd,
+            )
+            stdout, stderr = await proc.communicate()
+            if stdout:
+                await websocket.send_json({"type": "stdout", "data": stdout.decode(errors="replace")})
+            if stderr:
+                await websocket.send_json({"type": "stderr", "data": stderr.decode(errors="replace")})
+            await websocket.send_json({"type": "exit_code", "data": proc.returncode})
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        try:
+            await websocket.close()
+        except:
+            pass
 
 
 @router.delete("/storage/{username}", response_model=ApiResponse)

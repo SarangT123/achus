@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { api } from '../utils/api'
 
@@ -55,6 +55,10 @@ function AdminPage() {
           className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'logs' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
           📋 Logs
         </button>
+        <button onClick={() => setTab('shell')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'shell' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          💻 Shell
+        </button>
       </div>
 
       {tab === 'users' && (
@@ -91,6 +95,7 @@ function AdminPage() {
       {tab === 'modules' && <ModulesManager />}
       {tab === 'system' && <SystemMonitor />}
       {tab === 'logs' && <LogViewer />}
+      {tab === 'shell' && <ShellTerminal />}
     </div>
   )
 }
@@ -478,6 +483,87 @@ function StorageBrowser() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function ShellTerminal() {
+  const [output, setOutput] = useState([{ type: 'info', data: 'Connecting...' }])
+  const [cmd, setCmd] = useState('')
+  const [ws, setWs] = useState(null)
+  const [connected, setConnected] = useState(false)
+  const inputRef = useRef(null)
+  const bottomRef = useRef(null)
+
+  const connect = useCallback(() => {
+    const token = localStorage.getItem('achus_token')
+    if (!token) { setOutput([{ type: 'info', data: 'Not authenticated' }]); return }
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const socket = new WebSocket(`${proto}://${window.location.host}/api/admin/shell`)
+    socket.onopen = () => {
+      socket.send(JSON.stringify({ token }))
+      setConnected(true)
+    }
+    socket.onmessage = (e) => {
+      const msg = JSON.parse(e.data)
+      setOutput(prev => [...prev, msg])
+    }
+    socket.onclose = () => {
+      setConnected(false)
+      setOutput(prev => [...prev, { type: 'info', data: 'Disconnected' }])
+    }
+    socket.onerror = () => {
+      setConnected(false)
+      setOutput(prev => [...prev, { type: 'info', data: 'Connection error' }])
+    }
+    setWs(socket)
+  }, [])
+
+  useEffect(() => {
+    connect()
+    return () => { ws?.close() }
+  }, [])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [output])
+
+  const sendCmd = () => {
+    if (!cmd.trim() || !ws || ws.readyState !== WebSocket.OPEN) return
+    ws.send(JSON.stringify({ cmd: cmd.trim() }))
+    setOutput(prev => [...prev, { type: 'input', data: `$ ${cmd.trim()}` }])
+    setCmd('')
+  }
+
+  const inputClasses = 'w-full bg-gray-900 text-green-300 border-0 outline-none font-mono text-sm p-0 caret-green-300'
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-gray-400">
+          {connected ? '🟢 Connected' : '🔴 Disconnected'}
+        </p>
+        {!connected && (
+          <button onClick={connect}
+            className="px-3 py-1 bg-primary-600 text-white rounded-lg text-xs">Reconnect</button>
+        )}
+      </div>
+      <div className="bg-gray-900 rounded-xl p-4 font-mono text-sm text-green-300 min-h-[400px] max-h-[600px] overflow-y-auto flex flex-col">
+        {output.map((line, i) => (
+          <div key={i} className={`leading-relaxed whitespace-pre-wrap break-all ${line.type === 'stderr' ? 'text-red-400' : line.type === 'info' ? 'text-gray-400' : line.type === 'input' ? 'text-yellow-300' : ''}`}>
+            {line.data}
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+      <div className="flex items-center gap-0 mt-0.5">
+        <span className="text-green-300 font-mono text-sm bg-gray-900 px-3 py-2.5 rounded-l-lg border-r border-gray-700">$</span>
+        <input ref={inputRef} value={cmd} onChange={e => setCmd(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') sendCmd() }}
+          className={`${inputClasses} bg-gray-900 px-3 py-2.5 rounded-r-lg flex-1`}
+          placeholder={connected ? 'Type a command...' : 'Not connected'}
+          disabled={!connected} autoComplete="off" spellCheck={false} />
+      </div>
     </div>
   )
 }
