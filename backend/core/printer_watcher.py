@@ -69,9 +69,8 @@ class PrinterWatcher:
         for file in files:
             try:
                 proc = await asyncio.create_subprocess_exec(
-                    "lp", str(file),
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    "lp", "-o", "document-format=application/pdf", str(file),
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 )
                 _, stderr = await proc.communicate()
                 if proc.returncode == 0:

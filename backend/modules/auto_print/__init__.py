@@ -98,7 +98,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     if printer_watcher.is_online:
         proc = await asyncio.create_subprocess_exec(
-            "lp", str(dest),
+            "lp", "-o", "document-format=application/pdf", str(dest),
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
         _, stderr = await proc.communicate()
