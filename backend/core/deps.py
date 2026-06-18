@@ -15,7 +15,7 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid auth header")
 
     token = authorization[7:]
-    username = validate_token(token)
+    username = await validate_token(token)
     if not username:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 

@@ -34,6 +34,14 @@ class PrintQueue(Base):
     printed_at = Column(DateTime, nullable=True)
 
 
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    token = Column(String, primary_key=True)
+    username = Column(String, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+
 class User(Base):
     __tablename__ = "users"
 
