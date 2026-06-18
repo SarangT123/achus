@@ -18,10 +18,10 @@ metadata = {
 async def list_templates():
     return ApiResponse(data={
         "templates": [
-            {"id": "event", "name": "Event"},
-            {"id": "workshop", "name": "Workshop"},
-            {"id": "notice", "name": "Notice"},
-            {"id": "celebration", "name": "Celebration"},
+            {"id": "minimal", "name": "Minimal", "desc": "Clean, centered, lots of whitespace"},
+            {"id": "vibrant", "name": "Vibrant", "desc": "Bold diagonal split, modern look"},
+            {"id": "classic", "name": "Classic", "desc": "Formal serif, decorative borders"},
+            {"id": "banner", "name": "Banner", "desc": "Full-width header with details card"},
         ],
         "themes": [
             {"id": "modern", "name": "Modern", "colors": ["#2563EB", "#EFF6FF"]},
@@ -36,13 +36,19 @@ async def list_templates():
 async def generate_poster(
     title: str = Form(...),
     subtitle: str = Form(""),
+    description: str = Form(""),
     date: str = Form(...),
+    time: str = Form(""),
     venue: str = Form(...),
-    template: str = Form("event"),
+    template: str = Form("minimal"),
     theme: str = Form("modern"),
 ):
     try:
-        result = service.generate_poster(title, subtitle, date, venue, template, theme)
+        result = service.generate_poster(
+            title, subtitle, date, venue,
+            description=description, time=time,
+            template_id=template, theme_id=theme,
+        )
         return FileResponse(str(result), media_type="application/pdf",
                             filename=f"poster_{template}.pdf")
     except Exception as e:

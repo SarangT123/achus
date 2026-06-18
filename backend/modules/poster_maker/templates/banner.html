@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Helvetica Neue', Arial, sans-serif; width: 210mm; height: 297mm; }
+
+.poster {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  background: {{ bg_color }};
+}
+
+.header {
+  background: {{ primary_color }};
+  padding: 18mm 25mm 30mm;
+  position: relative;
+  overflow: hidden;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -8mm; left: 0;
+  width: 100%; height: 16mm;
+  background: {{ bg_color }};
+  border-radius: 50% 50% 0 0;
+}
+
+.label {
+  font-size: 10pt; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 3pt;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 4mm;
+}
+
+.title {
+  font-size: 46pt; font-weight: 900;
+  color: #fff;
+  line-height: 1.05;
+  letter-spacing: -0.5pt;
+  max-width: 90%;
+}
+
+.subtitle {
+  font-size: 16pt; font-weight: 400;
+  color: rgba(255,255,255,0.8);
+  margin-top: 4mm;
+  line-height: 1.4;
+  max-width: 75%;
+}
+
+.body {
+  flex: 1;
+  padding: 10mm 25mm 20mm;
+  display: flex; flex-direction: column;
+  justify-content: center;
+}
+
+.description {
+  font-size: 12pt; font-weight: 400;
+  color: #6B7280;
+  line-height: 1.7;
+  margin-bottom: 12mm;
+  max-width: 85%;
+}
+
+.info-card {
+  background: #fff;
+  border-radius: 3mm;
+  padding: 8mm 12mm;
+  display: flex; gap: 0;
+  /* box-shadow omitted for WeasyPrint compatibility */
+  align-self: flex-start;
+  min-width: 60%;
+}
+
+.info-item {
+  flex: 1;
+  padding: 4mm 6mm;
+  text-align: center;
+}
+
+.info-item + .info-item {
+  border-left: 1px solid #F3F4F6;
+}
+
+.info-icon {
+  font-size: 18pt; margin-bottom: 2mm;
+}
+
+.info-label {
+  font-size: 8pt; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1pt;
+  color: {{ primary_color }};
+  opacity: 0.6;
+  margin-bottom: 1mm;
+}
+
+.info-value {
+  font-size: 13pt; font-weight: 600;
+  color: #1F2937;
+}
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="header">
+    {% if template_label %}<div class="label">{{ template_label }}</div>{% endif %}
+    <div class="title">{{ title }}</div>
+    {% if subtitle %}<div class="subtitle">{{ subtitle }}</div>{% endif %}
+  </div>
+  <div class="body">
+    {% if description %}<div class="description">{{ description }}</div>{% endif %}
+    <div class="info-card">
+      <div class="info-item">
+        <div class="info-icon">📅</div>
+        <div class="info-label">Date</div>
+        <div class="info-value">{{ date }}</div>
+      </div>
+      {% if time %}
+      <div class="info-item">
+        <div class="info-icon">⏰</div>
+        <div class="info-label">Time</div>
+        <div class="info-value">{{ time }}</div>
+      </div>
+      {% endif %}
+      <div class="info-item">
+        <div class="info-icon">📍</div>
+        <div class="info-label">Venue</div>
+        <div class="info-value">{{ venue }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

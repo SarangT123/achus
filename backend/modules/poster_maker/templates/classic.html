@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Georgia', 'Times New Roman', serif; width: 210mm; height: 297mm; overflow: hidden; }
+
+.poster {
+  width: 100%; height: 100%;
+  background: {{ bg_color }};
+  display: flex; flex-direction: column;
+  position: relative;
+  padding: 12mm;
+}
+
+.border-frame {
+  flex: 1;
+  border: 2px solid {{ primary_color }};
+  display: flex; flex-direction: column;
+  position: relative;
+  padding: 15mm 20mm;
+}
+
+.border-frame::before {
+  content: '';
+  position: absolute;
+  top: 5mm; left: 5mm;
+  right: 5mm; bottom: 5mm;
+  border: 1px solid {{ primary_color }};
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.corner-ornament {
+  position: absolute;
+  font-size: 18pt;
+  color: {{ primary_color }};
+  opacity: 0.35;
+}
+.co-tl { top: 3mm; left: 5mm; }
+.co-tr { top: 3mm; right: 5mm; }
+.co-bl { bottom: 3mm; left: 5mm; }
+.co-br { bottom: 3mm; right: 5mm; }
+
+.content {
+  flex: 1;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.title {
+  font-size: 42pt; font-weight: 700;
+  color: {{ primary_color }};
+  line-height: 1.15;
+  margin-bottom: 5mm;
+  letter-spacing: 0.5pt;
+}
+
+.subtitle {
+  font-size: 17pt; font-weight: 400;
+  font-style: italic;
+  color: #6B7280;
+  line-height: 1.4;
+  margin-bottom: 10mm;
+}
+
+.ornament-divider {
+  font-size: 16pt;
+  color: {{ primary_color }};
+  opacity: 0.3;
+  margin-bottom: 8mm;
+  letter-spacing: 4pt;
+}
+
+.description {
+  font-size: 11pt; font-weight: 400;
+  color: #4B5563;
+  line-height: 1.7;
+  margin-bottom: 10mm;
+  max-width: 80%;
+  margin-left: auto; margin-right: auto;
+}
+
+.details {
+  display: flex; justify-content: center; gap: 12mm;
+  flex-wrap: wrap;
+}
+
+.detail-item {
+  text-align: center;
+}
+
+.detail-label {
+  font-size: 9pt; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5pt;
+  color: {{ primary_color }};
+  opacity: 0.6;
+  margin-bottom: 1mm;
+}
+
+.detail-value {
+  font-size: 14pt; font-weight: 500;
+  color: #374151;
+}
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="border-frame">
+    <div class="corner-ornament co-tl">❧</div>
+    <div class="corner-ornament co-tr">❧</div>
+    <div class="corner-ornament co-bl">❧</div>
+    <div class="corner-ornament co-br">❧</div>
+    <div class="content">
+      <div class="title">{{ title }}</div>
+      {% if subtitle %}<div class="subtitle">{{ subtitle }}</div>{% endif %}
+      <div class="ornament-divider">— ✦ —</div>
+      {% if description %}<div class="description">{{ description }}</div>{% endif %}
+      <div class="details">
+        <div class="detail-item">
+          <div class="detail-label">Date</div>
+          <div class="detail-value">{{ date }}{% if time %} · {{ time }}{% endif %}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Venue</div>
+          <div class="detail-value">{{ venue }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

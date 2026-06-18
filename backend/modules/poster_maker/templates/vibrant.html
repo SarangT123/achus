@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Helvetica Neue', Arial, sans-serif; width: 210mm; height: 297mm; overflow: hidden; }
+
+.poster {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.diagonal-bg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: linear-gradient(135deg, {{ primary_color }} 0%, {{ primary_color }} 40%, {{ bg_color }} 40%, {{ bg_color }} 100%);
+  z-index: 0;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex; flex-direction: column;
+  padding: 20mm 25mm;
+}
+
+.header-section {
+  margin-bottom: auto;
+}
+
+.label {
+  font-size: 10pt; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 3pt;
+  color: #fff;
+  opacity: 0.8;
+  margin-bottom: 5mm;
+}
+
+.title {
+  font-size: 48pt; font-weight: 900;
+  color: #fff;
+  line-height: 1.05;
+  letter-spacing: -1pt;
+  margin-bottom: 4mm;
+  max-width: 90%;
+}
+
+.subtitle {
+  font-size: 16pt; font-weight: 400;
+  color: rgba(255,255,255,0.8);
+  line-height: 1.4;
+}
+
+.body-section {
+  margin-top: 10mm;
+  background: #fff;
+  border-radius: 3mm;
+  padding: 8mm 12mm;
+  /* box-shadow omitted for WeasyPrint compatibility */
+}
+
+.description {
+  font-size: 11pt; font-weight: 400;
+  color: #6B7280;
+  line-height: 1.7;
+  margin-bottom: 8mm;
+  padding-bottom: 8mm;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.details-row {
+  display: flex; gap: 6mm; flex-wrap: wrap;
+}
+
+.detail-item {
+  display: flex; align-items: center; gap: 2.5mm;
+  font-size: 12pt;
+}
+
+.detail-icon { font-size: 14pt; }
+.detail-label { font-weight: 600; color: {{ primary_color }}; }
+.detail-value { color: #374151; }
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="diagonal-bg"></div>
+  <div class="content">
+    <div class="header-section">
+      {% if template_label %}<div class="label">{{ template_label }}</div>{% endif %}
+      <div class="title">{{ title }}</div>
+      {% if subtitle %}<div class="subtitle">{{ subtitle }}</div>{% endif %}
+    </div>
+    <div class="body-section">
+      {% if description %}<div class="description">{{ description }}</div>{% endif %}
+      <div class="details-row">
+        <div class="detail-item"><span class="detail-icon">📅</span><span class="detail-label">Date:</span><span class="detail-value">{{ date }}{% if time %}, {{ time }}{% endif %}</span></div>
+        <div class="detail-item"><span class="detail-icon">📍</span><span class="detail-label">Venue:</span><span class="detail-value">{{ venue }}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
