@@ -249,6 +249,15 @@ async def get_logs(
     })
 
 
+import logging
+
+logger = logging.getLogger("achus.admin.shell")
+
+
+def _get_shell_logger():
+    return logger
+
+
 @router.websocket("/shell")
 async def shell_ws(websocket: WebSocket):
     await websocket.accept()
@@ -264,53 +273,55 @@ async def shell_ws(websocket: WebSocket):
         await websocket.close(code=4001)
         return
 
-    async with async_session() as session:
-        result = await session.execute(select(User).where(User.username == username, User.role == "admin"))
-        admin = result.scalar_one_or_none()
-    if not admin:
-        await websocket.close(code=4001)
-        return
-
-    cwd = str(BASE_DIR)
-    await websocket.send_json({"type": "info", "data": f"Shell ready.  CWD: {cwd}\nType 'exit' to close."})
-
     try:
-        while True:
-            msg = await websocket.receive_json()
-            cmd = msg.get("cmd", "").strip()
-            if not cmd:
-                continue
-            if cmd.lower() == "exit":
-                break
-            if cmd.lower().startswith("cd "):
-                new_dir = cmd[3:].strip()
-                new_path = (Path(cwd) / new_dir).resolve()
-                if new_path.is_dir():
-                    cwd = str(new_path)
-                    await websocket.send_json({"type": "stdout", "data": ""})
-                else:
-                    await websocket.send_json({"type": "stderr", "data": f"cd: {new_dir}: Not a directory\n"})
-                continue
+        async with async_session() as session:
+            result = await session.execute(select(User).where(User.username == username, User.role == "admin"))
+            admin = result.scalar_one_or_none()
+        if not admin:
+            await websocket.close(code=4001)
+            return
 
-            proc = await asyncio.create_subprocess_shell(
-                cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=cwd,
-            )
-            stdout, stderr = await proc.communicate()
-            if stdout:
-                await websocket.send_json({"type": "stdout", "data": stdout.decode(errors="replace")})
-            if stderr:
-                await websocket.send_json({"type": "stderr", "data": stderr.decode(errors="replace")})
-            await websocket.send_json({"type": "exit_code", "data": proc.returncode})
-    except WebSocketDisconnect:
-        pass
-    except Exception:
-        pass
-    finally:
+        cwd = str(BASE_DIR)
+        await websocket.send_json({"type": "info", "data": f"Shell ready.  CWD: {cwd}\nType 'exit' to close."})
+
         try:
-            await websocket.close()
+            while True:
+                msg = await websocket.receive_json()
+                cmd = msg.get("cmd", "").strip()
+                if not cmd:
+                    continue
+                if cmd.lower() == "exit":
+                    break
+                if cmd.lower().startswith("cd "):
+                    new_dir = cmd[3:].strip()
+                    new_path = (Path(cwd) / new_dir).resolve()
+                    if new_path.is_dir():
+                        cwd = str(new_path)
+                        await websocket.send_json({"type": "stdout", "data": ""})
+                    else:
+                        await websocket.send_json({"type": "stderr", "data": f"cd: {new_dir}: Not a directory\n"})
+                    continue
+
+                proc = await asyncio.create_subprocess_shell(
+                    cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=cwd,
+                )
+                stdout, stderr = await proc.communicate()
+                if stdout:
+                    await websocket.send_json({"type": "stdout", "data": stdout.decode(errors="replace")})
+                if stderr:
+                    await websocket.send_json({"type": "stderr", "data": stderr.decode(errors="replace")})
+                await websocket.send_json({"type": "exit_code", "data": proc.returncode})
+        except WebSocketDisconnect:
+            pass
+        except Exception:
+            pass
+    except Exception as e:
+        logger.error(f"Shell WebSocket error: {e}", exc_info=True)
+        try:
+            await websocket.close(1011)
         except:
             pass
 
